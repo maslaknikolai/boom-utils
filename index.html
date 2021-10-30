@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
+</head>
+<body>
+    <div id="constructor">
+        <div style="display: flex; align-items: flex-start;">
+            <textarea
+                v-model="releaseString"
+                placeholder="Колонка ID Релиза"
+                style="
+                    height: 500px;
+                    width: 300px;
+                "
+            ></textarea>
+
+            <textarea
+                v-model="playlistsString"
+                placeholder="Колонка плейлисты"
+                style="
+                    height: 500px;
+                    width: 300px;
+                "
+            ></textarea>
+        </div>
+
+        <br>
+
+        <div style="display: flex; align-items: flex-start;">
+            <table>
+                <tr
+                    v-for="playlistWithReleases in playlistsWithReleases"
+                    :key="playlistWithReleases.name"
+                >
+                    <td>{{ playlistWithReleases.name }}</td>
+                    <td>
+                        <span
+                            v-for="release in playlistWithReleases.releases"
+                            :key="release"
+                        >
+                            {{ release }}&nbsp;
+                        </span>
+                    </td>
+                </tr>
+            </table>
+<!-- 
+            <table>
+                <tr
+                    v-for="(release, i) in releaseCells"
+                    :key="release"
+                >
+                    <td>{{i+2}}</td>
+                    <td>{{ release }}</td>
+                    <td>
+                        {{ playlistsCells[i] }}
+                    </td>
+                </tr>
+            </table> -->
+        </div>
+
+        <!-- <pre>{{knownPlaylistsAndPlaylistIndentifiersByIndexes}}</pre> -->
+
+        <!-- <pre
+            style="
+                width: 300px;
+                overflow: auto;
+            "
+        >{{releaseCells}}</pre>
+
+        <pre
+            style="
+                width: 300px;
+                overflow: auto;
+            "
+        >{{playlistsCells}}</pre> -->
+
+        <!-- <pre
+            style="
+                width: 300px;
+                overflow: auto;
+            "
+        >{{knownPlaylists}}</pre> -->
+
+        <!-- <pre
+            style="
+                width: 300px;
+                overflow: auto;
+            "
+        >{{playlistIndentifiersByIndexes}}</pre> -->
+
+        <!-- <pre
+            style="
+                width: 300px;
+                overflow: auto;
+            "
+        >{{playlistsWithReleases}}</pre> -->
+    </div>
+
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        td {
+            border: 1px solid rgba(0,0,0,.2);
+        }
+    </style>
+
+    <script>
+        function byteCount(s) {
+            return encodeURI(s).split(/%..|./).length - 1;
+        }
+
+        function getCells(str) {
+            if (!str) return []
+
+            let bracketOpened = false
+            let group = []
+            const breaks = str
+                .split('\n')
+                .slice(1)
+
+            const isFirstQuoteClosing = (() => {
+                const firstQuote = breaks.find(row => row.match('"'))
+
+                return !!firstQuote.trim().match(/"$/)
+            })()
+
+            let isQuoteOpened = isFirstQuoteClosing
+            const groups = isQuoteOpened ? [[]] : []
+            breaks.forEach((row, i) => {
+                if (isQuoteOpened) {
+                    groups[groups.length-1].push(row.replaceAll(/"/g, ''))
+                } else {
+                    groups.push([row.replaceAll(/"/g, '')])
+                }
+
+                if (row.match(/"$/)) {
+                    isQuoteOpened = false
+                }
+
+                if (row.match(/^"/)) {
+                    isQuoteOpened = true
+                }
+            })
+
+            return groups
+        }
+
+        const App = {
+            setup() {
+                const releaseString = Vue.ref(localStorage.releaseString || '')
+
+                Vue.watch(() => {
+                    localStorage.releaseString = releaseString.value
+                })
+
+                const playlistsString = Vue.ref(localStorage.playlistsString || '')
+
+                Vue.watch(() => {
+                    localStorage.playlistsString = playlistsString.value
+                })
+
+                const playlistsCells = Vue.computed(() => getCells(playlistsString.value))
+                const releaseCells = Vue.computed(() => getCells(releaseString.value))
+
+                const knownPlaylistsAndPlaylistIndentifiersByIndexes = Vue.computed(() => {
+                    const knownPlaylists = []
+
+                    const playlistIndentifiersByIndexes = playlistsCells.value.map((playlists, i) => {
+                        return playlists.map((playlistName) => {
+                            const foundPlaylistObject = knownPlaylists.find(p => p.name.toLowerCase() === playlistName.toLowerCase())
+
+                            if (foundPlaylistObject) {
+                                return foundPlaylistObject.id
+                            }
+
+                            const id = knownPlaylists.length
+                            knownPlaylists.push({ id, name: playlistName })
+
+                            return id
+                        })
+                    })
+
+                    return { knownPlaylists, playlistIndentifiersByIndexes }
+                })
+                const knownPlaylists = Vue.computed(() => knownPlaylistsAndPlaylistIndentifiersByIndexes.value.knownPlaylists)
+                const playlistIndentifiersByIndexes = Vue.computed(() => knownPlaylistsAndPlaylistIndentifiersByIndexes.value.playlistIndentifiersByIndexes)
+
+                const playlistsWithReleases = Vue.computed(() => {
+                    const playlists = knownPlaylists.value.map(playlist => ({
+                        id: playlist.id,
+                        name: playlist.name,
+                        releases: []
+                    }))
+
+                    releaseCells.value.forEach((release, releaseIndex) => {
+                        if (release.length !== 1 || release[0].length === '') return
+
+                        const playlistIds = playlistIndentifiersByIndexes.value[releaseIndex]
+
+                        playlistIds.forEach(playlistId => {
+                            const playlistObj = playlists.find(i => i.id === playlistId)
+                            playlistObj.releases = [...playlistObj.releases, ...release]
+                        })
+                    })
+
+                    return playlists
+                        .map(playlist => ({ name: playlist.name, releases: playlist.releases }))
+                        .sort((a, b) => byteCount(a) - byteCount(b))
+                })
+
+                return {
+                    releaseString,
+                    playlistsString,
+                    releaseCells,
+                    playlistsCells,
+                    knownPlaylists,
+                    knownPlaylistsAndPlaylistIndentifiersByIndexes,
+                    playlistIndentifiersByIndexes,
+                    playlistsWithReleases,
+                }
+            },
+        }
+
+        Vue.createApp(App).mount('#constructor')
+    </script>
+</body>
+</html>
