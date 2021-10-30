@@ -63,8 +63,7 @@
                 </tr>
             </table> -->
         </div>
-
-        <!-- <pre>{{knownPlaylistsAndPlaylistIndentifiersByIndexes}}</pre> -->
+        <!-- <pre>{{playlistsWithReleases}}</pre> -->
 
         <!-- <pre
             style="
@@ -79,20 +78,6 @@
                 overflow: auto;
             "
         >{{playlistsCells}}</pre> -->
-
-        <!-- <pre
-            style="
-                width: 300px;
-                overflow: auto;
-            "
-        >{{knownPlaylists}}</pre> -->
-
-        <!-- <pre
-            style="
-                width: 300px;
-                overflow: auto;
-            "
-        >{{playlistIndentifiersByIndexes}}</pre> -->
 
         <!-- <pre
             style="
@@ -174,50 +159,33 @@
                 const playlistsCells = Vue.computed(() => getCells(playlistsString.value))
                 const releaseCells = Vue.computed(() => getCells(releaseString.value))
 
-                const knownPlaylistsAndPlaylistIndentifiersByIndexes = Vue.computed(() => {
-                    const knownPlaylists = []
-
-                    const playlistIndentifiersByIndexes = playlistsCells.value.map((playlists, i) => {
-                        return playlists.map((playlistName) => {
-                            const foundPlaylistObject = knownPlaylists.find(p => p.name.toLowerCase() === playlistName.toLowerCase())
-
-                            if (foundPlaylistObject) {
-                                return foundPlaylistObject.id
-                            }
-
-                            const id = knownPlaylists.length
-                            knownPlaylists.push({ id, name: playlistName })
-
-                            return id
-                        })
-                    })
-
-                    return { knownPlaylists, playlistIndentifiersByIndexes }
-                })
-                const knownPlaylists = Vue.computed(() => knownPlaylistsAndPlaylistIndentifiersByIndexes.value.knownPlaylists)
-                const playlistIndentifiersByIndexes = Vue.computed(() => knownPlaylistsAndPlaylistIndentifiersByIndexes.value.playlistIndentifiersByIndexes)
 
                 const playlistsWithReleases = Vue.computed(() => {
-                    const playlists = knownPlaylists.value.map(playlist => ({
-                        id: playlist.id,
-                        name: playlist.name,
-                        releases: []
-                    }))
+                    const playlistsWithReleasesMutable = []
 
                     releaseCells.value.forEach((release, releaseIndex) => {
-                        if (release.length !== 1 || release[0].length === '') return
+                        if (release.length !== 1 || release[0].length === 0) {
+                            return
+                        }
 
-                        const playlistIds = playlistIndentifiersByIndexes.value[releaseIndex]
+                        const releasePlaylistNames = playlistsCells.value[releaseIndex]
 
-                        playlistIds.forEach(playlistId => {
-                            const playlistObj = playlists.find(i => i.id === playlistId)
-                            playlistObj.releases = [...playlistObj.releases, ...release]
+                        releasePlaylistNames.forEach(playlistName => {
+                            const playlistObj = playlistsWithReleasesMutable.find(p => p.name.toLowerCase() === playlistName.trim().toLowerCase())
+
+                            if (!playlistObj) {
+                                playlistsWithReleasesMutable.push({
+                                    name: playlistName.trim(),
+                                    releases: [...release]
+                                })
+                            } else {
+                                playlistObj.releases = [...playlistObj.releases, ...release]
+                            }
                         })
                     })
 
-                    return playlists
-                        .map(playlist => ({ name: playlist.name, releases: playlist.releases }))
-                        .sort((a, b) => byteCount(a) - byteCount(b))
+                    return playlistsWithReleasesMutable
+                        .sort((a, b) => byteCount(a.name) - byteCount(b.name))
                 })
 
                 return {
@@ -225,9 +193,6 @@
                     playlistsString,
                     releaseCells,
                     playlistsCells,
-                    knownPlaylists,
-                    knownPlaylistsAndPlaylistIndentifiersByIndexes,
-                    playlistIndentifiersByIndexes,
                     playlistsWithReleases,
                 }
             },
