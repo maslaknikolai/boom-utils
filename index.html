@@ -30,6 +30,13 @@
             ></textarea>
         </div>
 
+        <label>
+            <input type="checkbox" v-model="shouldCompareStrictly">
+            Строгое сравнение
+        </label>
+
+        <br>
+        <br>
         <br>
 
         <div style="display: flex; align-items: flex-start;">
@@ -38,7 +45,24 @@
                     v-for="playlistWithReleases in playlistsWithReleases"
                     :key="playlistWithReleases.name"
                 >
-                    <td>{{ playlistWithReleases.name }}</td>
+                    <td>
+                        {{ playlistWithReleases.name }}
+                        <span
+                            v-for="altName in playlistWithReleases.altNames"
+                            :key="altName"
+                            style="
+                                display: inline-block;
+                                white-space: nowrap;
+                                border-radius: 3px;
+                                padding: 3px;
+                                background: #FFD024;
+                                font-size: 11px;
+                                margin-right: 3px;
+                            "
+                        >
+                            {{altName}}&nbsp;
+                        </span>
+                    </td>
                     <td>
                         <span
                             v-for="release in playlistWithReleases.releases"
@@ -142,6 +166,47 @@
             return groups
         }
 
+        function compare(a, b) {
+            const ac = a.trim().toLowerCase()
+            const bc = b.trim().toLowerCase()
+
+            if (ac === bc) return true
+
+            if (Math.abs(ac.length - bc.length) > 4) return false
+
+            const aSymbols = ac.split('')
+                .reduce((acc, s) => ({
+                    ...acc,
+                    [s]: (acc[s] || 0) + 1
+                }), {})
+
+            const bSymbols = bc.split('')
+                .reduce((acc, s) => ({
+                    ...acc,
+                    [s]: (acc[s] || 0) + 1
+                }), {})
+
+            const diffSummA = Object.entries(aSymbols)
+                .reduce((acc, [s, aCount]) => {
+                    const bCount = bSymbols[s] || 0
+                    return acc + Math.abs(aCount - bCount)
+                }, 0)
+
+            const diffSummB = Object.entries(bSymbols)
+                .reduce((acc, [s, bCount]) => {
+                    const aCount = aSymbols[s] || 0
+                    return acc + Math.abs(bCount - aCount)
+                }, 0)
+
+            const diffSumm = Math.max(diffSummA, diffSummB)
+
+            if (diffSumm > 2) {
+                return false
+            }
+
+            return diffSumm
+        }
+
         const App = {
             setup() {
                 const releaseString = Vue.ref(localStorage.releaseString || '')
@@ -154,6 +219,12 @@
 
                 Vue.watch(() => {
                     localStorage.playlistsString = playlistsString.value
+                })
+
+                const shouldCompareStrictly = Vue.ref(localStorage.shouldCompareStrictly === 'true')
+
+                Vue.watch(() => {
+                    localStorage.shouldCompareStrictly = shouldCompareStrictly.value
                 })
 
                 const playlistsCells = Vue.computed(() => getCells(playlistsString.value))
@@ -169,17 +240,31 @@
                         }
 
                         const releasePlaylistNames = playlistsCells.value[releaseIndex]
+                        if (!releasePlaylistNames) {
+                            return
+                        }
 
                         releasePlaylistNames.forEach(playlistName => {
-                            const playlistObj = playlistsWithReleasesMutable.find(p => p.name.toLowerCase() === playlistName.trim().toLowerCase())
+                            const foundPlaylistObj = playlistsWithReleasesMutable.find(p => {
+                                if (shouldCompareStrictly.value) {
+                                    return p.name.trim().toLowerCase() === playlistName.trim().toLowerCase()
+                                }
 
-                            if (!playlistObj) {
+                                return compare(p.name, playlistName)
+                            })
+
+                            if (!foundPlaylistObj) {
                                 playlistsWithReleasesMutable.push({
                                     name: playlistName.trim(),
-                                    releases: [...release]
+                                    releases: [...release],
+                                    altNames: []
                                 })
                             } else {
-                                playlistObj.releases = [...playlistObj.releases, ...release]
+                                if (playlistName.trim().toLowerCase() !== foundPlaylistObj.name.trim().toLowerCase() && !foundPlaylistObj.altNames.find(i => i.trim().toLowerCase() === playlistName.trim().toLowerCase())) {
+                                    foundPlaylistObj.altNames.push(playlistName)
+                                }
+
+                                foundPlaylistObj.releases = [...foundPlaylistObj.releases, ...release]
                             }
                         })
                     })
@@ -194,6 +279,7 @@
                     releaseCells,
                     playlistsCells,
                     playlistsWithReleases,
+                    shouldCompareStrictly
                 }
             },
         }
