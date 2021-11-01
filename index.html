@@ -145,9 +145,9 @@
                 .slice(1)
 
             const isFirstQuoteClosing = (() => {
-                const firstQuote = breaks.find(row => row.match('"'))
+                const rowWithFirstQuote = breaks.find(row => row.match('"'))
 
-                return !!firstQuote.trim().match(/"$/)
+                return !!rowWithFirstQuote?.trim().match(/"$/) || false
             })()
 
             let isQuoteOpened = isFirstQuoteClosing
