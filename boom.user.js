@@ -61,6 +61,8 @@ async function fillAlbum(boomUtilsData) {
 //
 //
 
+console.log(1);
+
 function sleep(ms){
     return new Promise(r => setTimeout(r, ms))
 }
