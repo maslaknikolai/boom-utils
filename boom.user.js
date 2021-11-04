@@ -24,7 +24,6 @@
 // @allFrames      true
 // ==/UserScript==
 
-const wait = (ms) => new Promise(r => setTimeout(r, ms))
 async function start() {
     const boomUtilsDataRaw = getQuery().boomUtilsData
     if (!boomUtilsDataRaw) {
@@ -47,7 +46,7 @@ async function fillAlbum(boomUtilsData) {
     addInputEl.value = ids.length
     addBtnEl.click()
 
-    await wait(500)
+    await sleep(500)
 
     Array.from(document.querySelectorAll('.track-id'))
         .slice(0, ids.length)
@@ -62,6 +61,9 @@ async function fillAlbum(boomUtilsData) {
 //
 //
 
+function sleep(ms){
+    return new Promise(r => setTimeout(r, ms))
+}
 
 function getQuery() {
     return Object.fromEntries(
