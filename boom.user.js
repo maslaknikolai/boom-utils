@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Boom utils
-// @version        1.0.0
+// @version        1.0.1
 // @description    Делать вещи быстрее
 // @author         Maslak Nikolai
 // @include        https://maslaknikolai.github.io/boom-utils/test-us.html*
