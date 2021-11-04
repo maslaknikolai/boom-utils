@@ -14,6 +14,7 @@
             v-for="inputEl in inputsEls"
         >
             <input
+                class="track-id"
                 type="text"
                 :value="inputEl"
             />
@@ -21,12 +22,13 @@
 
 
         <input
+            class="add-count"
             placeholder="Add count"
             type="number"
-            v-model="addCount"
+            ref="addCountRef"
         />
 
-        <button @click="add()">+</button>
+        <button class="add-btn" @click="add()">+</button>
     </div>
 
     <script>
@@ -38,17 +40,18 @@
                     '3',
                     '4',
                 ])
-                const addCount = Vue.ref()
+                const addCountRef = Vue.ref(null)
                 function add() {
+                    console.log(addCountRef.value.value);
                     inputsEls.value = [
-                        ...Array(addCount.value).fill().map(i => ''),
+                        ...Array(Number(addCountRef.value.value) || 0).fill().map(i => ''),
                         ...inputsEls.value
                     ]
                 }
 
                 return {
                     add,
-                    addCount,
+                    addCountRef,
                     inputsEls
                 }
             }
