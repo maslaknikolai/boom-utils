@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
+</head>
+<body>
+    <div id="constructor">
+        <div
+            v-for="inputEl in inputsCount"
+        >
+            <input
+                type="text"
+            />
+        </div>
+
+        <button @click="inputsCount += 1">+</button>
+    </div>
+
+    <script>
+        const App = {
+            setup() {
+                const inputsCount = Vue.ref(4)
+
+                return {
+                    inputsCount
+                }
+            }
+        }
+
+        Vue.createApp(App).mount('#constructor')
+    </script>
+</body>
+</html>
