@@ -11,23 +11,45 @@
 <body>
     <div id="constructor">
         <div
-            v-for="inputEl in inputsCount"
+            v-for="inputEl in inputsEls"
         >
             <input
                 type="text"
+                :value="inputEl"
             />
         </div>
 
-        <button @click="inputsCount += 1">+</button>
+
+        <input
+            placeholder="Add count"
+            type="number"
+            v-model="addCount"
+        />
+
+        <button @click="add()">+</button>
     </div>
 
     <script>
         const App = {
             setup() {
-                const inputsCount = Vue.ref(4)
+                const inputsEls = Vue.ref([
+                    '1',
+                    '2',
+                    '3',
+                    '4',
+                ])
+                const addCount = Vue.ref()
+                function add() {
+                    inputsEls.value = [
+                        ...Array(addCount.value).fill().map(i => ''),
+                        ...inputsEls.value
+                    ]
+                }
 
                 return {
-                    inputsCount
+                    add,
+                    addCount,
+                    inputsEls
                 }
             }
         }
