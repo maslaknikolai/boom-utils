@@ -32,7 +32,7 @@ async function start() {
       }
 
       if (event.code === 'KeyY') {
-        const ids = prompt('Вставьте идентификаторы').split('  ')
+        const ids = prompt('Вставьте идентификаторы').replace(/\D+/g, ' ').split(' ')
 
         if (ids.length === 1 && ids[0] === '') {
           return
