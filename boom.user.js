@@ -26,6 +26,22 @@
 // ==/UserScript==
 
 async function start() {
+    document.addEventListener('keydown', event => {
+      if (!event.ctrlKey && !event.altKey) {
+        return
+      }
+
+      if (event.code === 'KeyY') {
+        const ids = prompt('Вставьте идентификаторы').split('  ')
+
+        if (ids.length === 1 && ids[0] === '') {
+          return
+        }
+
+        fillPlaylist({ ids })
+      }
+    })
+
     const boomUtilsDataRaw = getQuery().boomUtilsData
     if (!boomUtilsDataRaw) {
         return
