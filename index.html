@@ -64,12 +64,26 @@
             Строгое сравнение
         </label>
 
+        <button @click="parse()">Разложить</button>
+
         <br>
         <br>
+        Трек должен быть один или столько же сколько плейлистов
+
+        <table style="font-size: 10px;">
+            <tr
+                v-for="(row, i) in parsedTable"
+                :key="i"
+                :class="{error: row.error}"
+            >
+                <td>{{row.releaseCell}}</td>
+                <td>{{row.playlistsCell}}</td>
+            </tr>
+        </table>
         <br>
 
         <div style="display: flex; align-items: flex-start;">
-            <table>
+            <table style="font-size: 10px;">
                 <tr
                     v-for="playlistWithReleases in playlistsWithReleases"
                     :key="playlistWithReleases.name"
@@ -88,9 +102,8 @@
                                 display: inline-block;
                                 white-space: nowrap;
                                 border-radius: 3px;
-                                padding: 3px;
+                                padding: 1px;
                                 background: #FFD024;
-                                font-size: 11px;
                                 margin-right: 3px;
                             "
                         >
@@ -107,42 +120,7 @@
                     </td>
                 </tr>
             </table>
-<!-- 
-            <table>
-                <tr
-                    v-for="(release, i) in releaseCells"
-                    :key="release"
-                >
-                    <td>{{i+2}}</td>
-                    <td>{{ release }}</td>
-                    <td>
-                        {{ playlistsCells[i] }}
-                    </td>
-                </tr>
-            </table> -->
         </div>
-        <!-- <pre>{{playlistsWithReleases}}</pre> -->
-
-        <!-- <pre
-            style="
-                width: 300px;
-                overflow: auto;
-            "
-        >{{releaseCells}}</pre>
-
-        <pre
-            style="
-                width: 300px;
-                overflow: auto;
-            "
-        >{{playlistsCells}}</pre> -->
-
-        <!-- <pre
-            style="
-                width: 300px;
-                overflow: auto;
-            "
-        >{{playlistsWithReleases}}</pre> -->
     </div>
 
     <style>
@@ -157,43 +135,46 @@
         td {
             border: 1px solid rgba(0,0,0,.2);
         }
+
+        .error {
+            background: #ff00005e;
+        }
     </style>
 
     <script>
-        function byteCount(s) {
-            return encodeURI(s).split(/%..|./).length - 1;
-        }
-
         function getCells(str) {
             if (!str) return []
 
-            let bracketOpened = false
-            let group = []
-            const breaks = str
+            const rows = str
                 .split('\n')
-                .slice(1)
 
-            const isFirstQuoteClosing = (() => {
-                const rowWithFirstQuote = breaks.find(row => row.match('"'))
+            let isQuoteOpened = false
+            const groups = []
 
-                return !!rowWithFirstQuote?.trim().match(/"$/) || false
-            })()
+            rows.forEach((row, i) => {
+                if (row.match(/"/)) {
+                    isQuoteOpened = !isQuoteOpened
 
-            let isQuoteOpened = isFirstQuoteClosing
-            const groups = isQuoteOpened ? [[]] : []
-            breaks.forEach((row, i) => {
+                    if (isQuoteOpened) {
+                        groups.push([])
+                    }
+
+                    if (row.replaceAll(/"/g, '') === '') {
+                        return
+                    } else {
+                        groups[groups.length-1].push(row.replaceAll(/"/g, ''))
+                        return
+                    }
+                }
+
                 if (isQuoteOpened) {
+                    if (row.replaceAll(/"/g, '') === '') {
+                        return
+                    }
+
                     groups[groups.length-1].push(row.replaceAll(/"/g, ''))
                 } else {
                     groups.push([row.replaceAll(/"/g, '')])
-                }
-
-                if (row.match(/"$/)) {
-                    isQuoteOpened = false
-                }
-
-                if (row.match(/^"/)) {
-                    isQuoteOpened = true
                 }
             })
 
@@ -264,21 +245,35 @@
                 const playlistsCells = Vue.computed(() => getCells(playlistsString.value))
                 const releaseCells = Vue.computed(() => getCells(releaseString.value))
 
+                const parsedTable = Vue.ref([])
+                const createParsedTable = () => {
+                    parsedTable.value = releaseCells.value.reduce((acc, releaseCell, index) => {
+                        const obj = {
+                            releaseCell: releaseCell.join(', '),
+                            playlistsCell: playlistsCells.value[index]?.join(', '),
+                            error: releaseCell.length > 1 && releaseCell.length !== playlistsCells.value[index]?.length
+                        }
 
-                const playlistsWithReleases = Vue.computed(() => {
+                        if (!obj.releaseCell && !obj.playlistsCell) {
+                            return acc
+                        }
+
+                        acc.push(obj)
+                        return acc
+                    }, [])
+                }
+
+                const playlistsWithReleases = Vue.ref([])
+                const createPlaylistsWithReleases = () => {
                     const playlistsWithReleasesMutable = []
 
-                    releaseCells.value.forEach((release, releaseIndex) => {
-                        if (release.length !== 1 || release[0].length === 0) {
+                    releaseCells.value.forEach((releaseCell, releaseIndex) => {
+                        const playlistCell = playlistsCells.value[releaseIndex]
+                        if (!playlistCell) {
                             return
                         }
 
-                        const releasePlaylistNames = playlistsCells.value[releaseIndex]
-                        if (!releasePlaylistNames) {
-                            return
-                        }
-
-                        releasePlaylistNames.forEach(playlistName => {
+                        playlistCell.forEach((playlistName, playlistNameIndex) => {
                             const foundPlaylistObj = playlistsWithReleasesMutable.find(p => {
                                 if (shouldCompareStrictly.value) {
                                     return p.name.trim().toLowerCase() === playlistName.trim().toLowerCase()
@@ -287,10 +282,18 @@
                                 return compare(p.name, playlistName)
                             })
 
+                            const addingReleaseId = releaseCell.length > 1
+                                ? releaseCell[playlistNameIndex]
+                                : releaseCell[0]
+
+                            if (addingReleaseId === '') {
+                                return
+                            }
+
                             if (!foundPlaylistObj) {
                                 playlistsWithReleasesMutable.push({
                                     name: playlistName.trim(),
-                                    releases: [...release],
+                                    releases: [addingReleaseId],
                                     altNames: []
                                 })
                             } else {
@@ -298,17 +301,20 @@
                                     foundPlaylistObj.altNames.push(playlistName)
                                 }
 
-                                foundPlaylistObj.releases = [...foundPlaylistObj.releases, ...release]
+                                foundPlaylistObj.releases = [...foundPlaylistObj.releases, addingReleaseId]
                             }
                         })
                     })
 
-                    return playlistsWithReleasesMutable
-                        .sort((a, b) => byteCount(a.name) - byteCount(b.name))
-                })
+                    playlistsWithReleases.value = playlistsWithReleasesMutable
+                }
+
+                const parse = () => {
+                    createParsedTable()
+                    createPlaylistsWithReleases()
+                }
 
                 function getLink(name) {
-                    console.log(name);
                     return `https://control.um-agency.com/admin/api/bundle/playlist/list?filter%5Bname%5D%5Btype%5D=&filter%5Bname%5D%5Bvalue%5D=${encodeURIComponent(name)}&filter%5Btested%5D%5Btype%5D=&filter%5Btested%5D%5Bvalue%5D=&filter%5Benabled_ok%5D%5Btype%5D=&filter%5Benabled_ok%5D%5Bvalue%5D=&filter%5Benabled_vk%5D%5Btype%5D=&filter%5Benabled_vk%5D%5Bvalue%5D=&filter%5Bis_compilation_ok%5D%5Btype%5D=&filter%5Bis_compilation_ok%5D%5Bvalue%5D=&filter%5Bis_compilation_vk%5D%5Btype%5D=&filter%5Bis_compilation_vk%5D%5Bvalue%5D=&filter%5BCategory%5D%5Btype%5D=&filter%5BCategory%5D%5Bvalue%5D=&filter%5B_page%5D=1&filter%5B_sort_by%5D=id&filter%5B_sort_order%5D=DESC&filter%5B_per_page%5D=32`
                 }
 
@@ -320,6 +326,8 @@
                     playlistsWithReleases,
                     shouldCompareStrictly,
                     getLink,
+                    parsedTable,
+                    parse,
                 }
             },
         }
