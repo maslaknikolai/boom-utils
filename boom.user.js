@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Boom utils
-// @version        1.0.1
+// @version        1.0.2
 // @description    Делать вещи быстрее
 // @author         Maslak Nikolai
 // @include        https://control.um-agency.com/*
