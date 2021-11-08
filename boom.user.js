@@ -85,7 +85,7 @@ async function fillPlaylist(boomUtilsData) {
     const date = moment()
     const dateStr = date
       .startOf('day')
-      .day(4)
+      .day(5)
       .format('YYYY-MM-DD HH:mm')
 
     await sleep(1000)
